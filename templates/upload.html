@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>upload</title>
+
+</head>
+<body>
+<form action="/api/upload" method="post" enctype="multipart/form-data" onsubmit="false">
+    <input type="file" name="file" id="id_file">
+    <label for="name">姓名:</label>
+    <input type="text" name="name" id="name">
+    <input type="submit" value="提交" name="submit">
+    <input type="submit" value="提取所有超链接" name="submit">
+    <input type="submit" value="提取所有超链接2" name="submit">
+</form>
+{#<a href="/api/download">下载文件</a>#}
+{#<input type="button" value="下载">#}
+</body>
+</html>
+
+<html>
+<body>
+
+</body>
+</html>
