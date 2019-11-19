@@ -8,25 +8,118 @@ import math
 from pprint import pprint
 import copy
 
-
 from db_pg import DB
 
 
 class SpiderTrans(object):
     def __init__(self):
         self.domain = 'http://hy.kingtrans.net'
+        self.cookie = self.get_cookie_from_file()
         self.header = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:70.0) Gecko/20100101 Firefox/70.0",
             "Accept": "text/css,*/*;q=0.1",
             "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
-            "Cookie": "JSESSIONID=C925F69D11C416AA64C52C10704A796F",  # todo: 到时候需要请求来获取,
+            "Cookie": self.cookie,  # todo: 到时候需要请求来获取,"JSESSIONID=072BD67C7A8B6A89AD48828CF9ABAF90"
         }
         self.num_per_page = 1000
         self.db = DB()
+        pprint(self.header)
+
+        self.session = requests.session()
+        if not self.check_cookie(self.session):
+            self.set_cookie_to_file()
+
+    #     测试当前cookie 是否有效
+
+    def __del__(self):
+        self.session.close()
+
+    def test(self):
+        pprint(self.header)
 
     #     用来提取子页面的方法
+
+    def check_cookie(self, session):
+        """
+        判断当前cookie是否有效
+        :param session: 请求session
+        :return: boolen
+        """
+        pass
+        check_url = 'http://hy.kingtrans.net/sysmanage/TNotice?action=getPersonalNumb'
+        res = session.get(check_url, headers=self.header)
+        print(res.content.decode('utf-8'))
+        if res.content.decode('utf-8').__contains__('numb'):
+            return True
+        return False
+
+    def get_cookie_from_file(self):
+        """
+        从文件中读取cookie
+        :return:
+        """
+        try:
+
+            with open('cookie.txt', 'rb') as f:
+                cookie = f.read().decode('utf-8').strip()
+        except Exception as e:
+            return ''
+
+        return cookie
+
+    def set_cookie_to_file(self):
+        login_url = 'http://hy.kingtrans.net/Logon?action=logon'
+        data = {
+            "ifcookie": "0", "cpuno": "", "driveno": "", "macaddr": "", "userid": "HY011",
+            "password": "HY011", "Login": "登录"}
+        self.header.pop('Cookie')
+        res_login = self.session.post(login_url, headers=self.header, data=data)
+        pprint('res_login')
+        dict_cookie = requests.utils.dict_from_cookiejar(self.session.cookies)
+        cookie = ''
+        for key in dict_cookie:
+            cookie += key + '=' + dict_cookie[key]
+
+        self.header['Cookie'] = cookie
+        self.session.get(self.domain, headers=self.header)
+
+        with open('cookie.txt', 'w', encoding='utf-8') as f:
+            f.write(cookie)
+        return cookie
+
+    def get_cookie(self, new_cookie=False):
+        """
+        当cookie失效时才会使用,获取新的cookie并将cookie值存写入到文件中
+        当new_cookie 为False时,直接从文本文件中获取cookie
+        :return:
+        """
+        login_url = 'http://hy.kingtrans.net/Logon?action=logon'
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:70.0) Gecko/20100101 Firefox/70.0",
+            "Accept": "text/css,*/*;q=0.1",
+            "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            # "cookie": "JSESSIONID=5ABB7AAB286E372F1B177CE003CBB405"
+        }
+        data = {
+            "ifcookie": "0", "cpuno": "", "driveno": "", "macaddr": "", "userid": "HY011",
+            "password": "HY011", "Login": "登录"}
+
+        # 不能使用session验证,登录会提示是否踢出另一个登录客户端,还是直接使用cookie
+        #
+        session = requests.session()
+        cookie = session.post(login_url, data=data, headers=headers).cookies
+        print(session.cookies)
+        dict_cookie = requests.utils.dict_from_cookiejar(session.cookies)
+        print(dict_cookie)
+        cookie = ''
+        for key in dict_cookie:
+            cookie += key + '=' + dict_cookie[key]
+        print(cookie)
+        return session.cookies
 
     def get_content_sub_page(self, url):
         """
@@ -184,6 +277,42 @@ class SpiderTrans(object):
         pass
 
 
+from logging import log
+
+
+def get_result_to_db():
+    try:
+        trans = SpiderTrans()
+        trans.get_result()
+        return True
+    except Exception as e:
+        log(level=1, msg=e)
+        return False
+
+
 if __name__ == '__main__':
     trans = SpiderTrans()
-    trans.get_result()
+    # trans.get_result()
+    #     redirct = """<script type="text/javascript">
+    # 	window.parent.document.location.href = "/logon.jsp?retry_reason=TIMEOUT";
+    # </script>"""
+    #     if trans.get_main_page_content(1, 20).__contains__('retry_reason=TIMEOUT'):
+    #         print('token 失效')
+    #     print(trans.get_main_page_content(1, 20))
+    #
+    # cookie_test = trans.get_cookie()
+    # print(cookie_test)
+    # print(trans.cookie)
+    # pprint(trans.header)
+    # pprint(trans.test())
+    # pprint(trans.set_cookie_to_file())
+
+    # print(trans.get_cookie())
+    # pprint( trans.get_main_page_content(1,1000))
+    # print(trans.get_result())
+    try:
+        trans.get_result()
+    except Exception as e:
+        # 一般请求两次就可以跑通
+        print(e)
+        # trans.get_result()
