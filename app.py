@@ -1,8 +1,12 @@
-from flask import Flask, render_template, request, redirect, send_from_directory, send_file, make_response
+from flask import Flask, render_template, request, redirect, send_from_directory, send_file, make_response,current_app
 from pprint import pprint
+from flask_script import Manager,Shell
 import sys
 import os
 import re
+
+from flask_mail import Mail, Message
+from threading import Thread
 
 
 def set_path_position(filename):
@@ -25,12 +29,37 @@ app = Flask(__name__)
 
 app.debug = True
 
+app.config['MAIL_SERVER'] = 'smtp.qq.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'hb_jun.luo@qq.com'
+app.config['MAIL_PASSWORD'] = '147258369LUOJU'
+mail = Mail(app)
+
+manager = Manager(app)
+
+with app.app_context():
+    a = current_app
+    b = current_app.config['DEBUG']
+
+def send_mail(app):
+    msg = Message(subject='luojun-test flask', recipients=['hb.luojun@outlook.com','462884784@qq.com'])
+    msg.body='send by flask-email'
+    msg.html = '<h1> 测试发送邮件</h1>'
+    with app.app_context():
+        # print(current_app.__name__)
+        # mail.send(msg)
+        print('mail send success!')
+
+
 STATIC_FILE_NAME = ''
 
 
 @app.route('/')
 def hello_world():
     # return 'Hello World!'
+    thread = Thread(target=send_mail, args=[app, ])
+    thread.start()
     return render_template('upload.html')
 
 
@@ -44,9 +73,9 @@ def get_all_link(full_path):
     for i in res:
         href = i[0]
         title = i[1]
-        lines += href+','+ title+'\r\n'
+        lines += href + ',' + title + '\r\n'
     # print(set_path_position('all_link.csv'))
-    with open(set_path_position('all_link.csv'),'wb') as w:
+    with open(set_path_position('all_link.csv'), 'wb') as w:
         w.write(lines.encode('utf-8'))
     return set_path_position('all_link.csv')
 
@@ -70,7 +99,7 @@ def upload():
         # return redirect('/')
         res_path = ''
         if submit == '提取所有超链接':
-            res_path =get_all_link(full_path)
+            res_path = get_all_link(full_path)
 
         # res_file = set_path_position('res.csv')
         return make_response(send_file(res_path, as_attachment=True))
@@ -92,6 +121,6 @@ def trans():
     pass
 
 
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    # app.run(host='0.0.0.0')
+    manager.run()
